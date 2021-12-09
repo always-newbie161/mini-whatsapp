@@ -6,5 +6,6 @@
 4. encryption cheyali
 5. listing number of docs in server cheyali
 6. proper documentation
+7. Data must be in data folder so manam code daniki edit cheyali
 
 
