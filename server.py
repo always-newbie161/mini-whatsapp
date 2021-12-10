@@ -2,6 +2,7 @@ import socket
 import threading
 import os
 import glob
+from cryptography.fernet import Fernet
 
 PORT = 9999
 # SERVER_IP = socket.gethostbyname(socket.gethostname())
@@ -19,6 +20,14 @@ clients_dict = {}  # will store name and socket object
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 server.bind(ADDR)
+
+
+def gen_key():
+    """
+    Generates a key and save it into a file
+    """
+    key = Fernet.generate_key()
+    return key
 
 
 def send_allbytes(sock, data, flags=0):
@@ -72,15 +81,15 @@ def handle_client(name, conn, addr):
                         file.write(chunk)
 
                 print(f"File {filename} Received from {name}")
-                send_client(name, f"[SERVER UPDATE] Hi {name}, your file {filename} has been received")
                 send_all(name, f"[SERVER UPDATE] {name} has uploaded file {filename} to the server")
 
             elif msg.startswith(DOWNLOAD_MSG):
-                _,filename = msg.split(' ')
-                filename_loc = "server/"+filename
-                if os.path.exists(filename_loc):
-                    print(filename + " found")               
-                filesize = os.path.getsize(filename_loc)
+                _, filename = msg.split(' ')
+                filename = "server/" + filename
+                print(f'[CLIENT REQUEST] DOWNLOAD {filename}')
+                if os.path.exists(filename):
+                    print(filename + " found")
+                filesize = os.path.getsize(filename)
 
                 send_client(name, f"[SERVER GRANT] DOWNLOAD {filesize} bytes")
 
@@ -91,8 +100,9 @@ def handle_client(name, conn, addr):
                         if not chunk:
                             break
                         send_allbytes(conn, chunk)
-                print(f"File {filename} Downloaded to client {name}")
-                
+            print(f"File {filename} Downloaded to client {name}")
+
+
             elif msg.startswith(LIST_MSG):
                 tokens = msg.split(' ')
                 if len(tokens) == 1:
@@ -105,9 +115,12 @@ def handle_client(name, conn, addr):
 
                 encoded_list = encoded_list if len(encoded_list) else 'No file found :('
                 send_client(name, f"[SERVER GRANT] TO LIST all the requested files:\n{encoded_list}")
-                
+
             else:
-                print(f"{msg}")
+                key, encr_msg = msg.split('#')
+                f = Fernet(key)
+                decr_msg = f.decrypt(encr_msg.encode()).decode()
+                print(f"{decr_msg}")
                 send_all(name, msg)
         else:
             print(f"reading msg even without user input!")
