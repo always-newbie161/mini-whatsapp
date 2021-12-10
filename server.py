@@ -1,16 +1,19 @@
 import socket
-import threading 
+import threading
 import os
-                        # sendall vadacha choodali
+import glob
+
 PORT = 9999
-SERVER_IP = socket.gethostbyname(socket.gethostname())
+# SERVER_IP = socket.gethostbyname(socket.gethostname())
+SERVER_IP = 'localhost'
 ADDR = (SERVER_IP, PORT)
 DISCONNECT_MSG = '!EXIT'
 FILE_MSG = 'FILE'
 UPLOAD_MSG = 'UPLOAD'
 DOWNLOAD_MSG = 'DOWNLOAD'
+LIST_MSG = 'LIST'
 BUF_SIZE = 1024
-clients_dict = {} # will store name and socket objet
+clients_dict = {}  # will store name and socket object
 
 # making a server socket for devices in the same network to connect
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -18,43 +21,52 @@ server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 server.bind(ADDR)
 
 
+def send_allbytes(sock, data, flags=0):
+    nbytes = sock.send(data, flags)
+    if nbytes > 0:
+        return send_allbytes(sock, data[nbytes:], flags)
+    else:
+        return None
+
+
 def send_all(name, msg):
     for clients in clients_dict:
         if clients != name:
-            clients_dict[clients].send(msg.encode())
+            send_allbytes(clients_dict[clients], msg.encode())
 
-def send_client(name,msg):
+
+def send_client(name, msg):
     for clients in clients_dict:
         if clients == name:
-            clients_dict[clients].send(msg.encode())
-
+            send_allbytes(clients_dict[clients], msg.encode())
 
 
 def handle_client(name, conn, addr):
     print(f"[NEW CONNECTION] {addr} connected, Name: {name}")
     print(f"[ACTIVE CONNECTIONS] {threading.activeCount() - 1}")
-    send_all(name,f"[NEW CONNECTION] Name: {name}")
+    send_all(name, f"[NEW CONNECTION] Name: {name}")
 
     while True:
         msg = conn.recv(BUF_SIZE).decode()
-        if len(msg)!=0:
+
+        if len(msg) != 0:
             if msg == DISCONNECT_MSG:
                 print(f"[USER DISCONNECTED] {addr} disconnected, Name: {name}")
                 send_all(name, f"[USER DISCONNECTED] Name: {name}")
                 clients_dict.pop(name)
                 break
             elif msg.startswith(UPLOAD_MSG):
-                _,filename,filesize = msg.split(' ')
+                _, filename, filesize = msg.split(' ')
                 print("Filename:", filename)
-                print("Filesize:", filesize)
+                print("Filesize:", filesize, "bytes")
 
                 send_client(name, "[SERVER GRANT] UPLOAD")
                 filename_loc = "server/" + filename 
                 
-                NUM_CHUNKS = int(filesize)//BUF_SIZE+1
+                NUM_CHUNKS = int(filesize) // BUF_SIZE + 1
                 with open(filename_loc,"wb") as file:
                     for _ in range(NUM_CHUNKS):
-                        chunk = conn.recv(BUF_SIZE)    
+                        chunk = conn.recv(BUF_SIZE)
                         if not chunk:
                             break
                         file.write(chunk)
@@ -72,15 +84,28 @@ def handle_client(name, conn, addr):
 
                 send_client(name, f"[SERVER GRANT] DOWNLOAD {filesize} bytes")
 
-                NUM_CHUNKS = int(filesize)//BUF_SIZE+1
+                NUM_CHUNKS = int(filesize) // BUF_SIZE + 1
                 with open(filename_loc,"rb") as file:
                     for _ in range(NUM_CHUNKS):
                         chunk = file.read(BUF_SIZE)
                         if not chunk:
                             break
-                        conn.sendall(chunk)
-
+                        send_allbytes(conn, chunk)
                 print(f"File {filename} Downloaded to client {name}")
+                
+            elif msg.startswith(LIST_MSG):
+                tokens = msg.split(' ')
+                if len(tokens) == 1:
+                    encoded_list = '\n'.join(glob.glob(r'server/*', recursive=True))
+                    print('[CLIENT REQUEST] LIST ALL FILES')
+                else:
+                    re_pattern = tokens[1]
+                    encoded_list = '\n'.join(glob.glob(r'server/' + re_pattern, recursive=True))
+                    print(f'[CLIENT REQUEST] LIST {re_pattern} FILES')
+
+                encoded_list = encoded_list if len(encoded_list) else 'No file found :('
+                send_client(name, f"[SERVER GRANT] TO LIST all the requested files:\n{encoded_list}")
+                
             else:
                 print(f"{msg}")
                 send_all(name, msg)
@@ -93,10 +118,10 @@ def start():
     server.listen()
     print(f"Server is listening on {SERVER_IP}")
     while True:
-        # we wait on below line for a new conncetion
+        # we wait on below line for a new connection
         conn, addr = server.accept()
         name = conn.recv(BUF_SIZE).decode()
-        # when a new conncetion occur, we store and socket object correponding name
+        # when a new connection occur, we store and socket object's corresponding name
         clients_dict[name] = conn
         thread = threading.Thread(target=handle_client, args=(name, conn, addr), daemon=True)
         thread.start()
