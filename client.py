@@ -25,6 +25,10 @@ client.connect(ADDR)
 client.send(name.encode())
 print(f"[JOINED SUCESSFULLY], Name: {name}")
 
+def make_dirs():
+    if not os.path.exists('client_files'):
+        # directory to store files downloaded from server
+        os.makedirs('client_files')
 
 def send_allbytes(sock, data, flags=0):
     nbytes = sock.send(data, flags)
@@ -63,9 +67,9 @@ def receive_msg():
         elif 'DOWNLOAD' in message_recv:
             FILE_SIZE = re.findall(r'\d+', message_recv)[0]
             print("Downloading.....")
-
-            NUM_CHUNKS = int(FILE_SIZE) // BUF_SIZE + 1
-            with open(FILE_NAME, "wb") as file:
+       
+            NUM_CHUNKS = int(FILE_SIZE)//BUF_SIZE+1
+            with open('client_files/'+FILE_NAME,"wb") as file:
                 for _ in range(NUM_CHUNKS):
                     chunk = client.recv(BUF_SIZE)
                     if not chunk:
@@ -78,6 +82,9 @@ def receive_msg():
 
 thread = threading.Thread(target=receive_msg, daemon=True)
 thread.start()
+
+
+    
 
 while True:
     message = input()
@@ -96,9 +103,9 @@ while True:
         while (flag):
             continue
     elif message.startswith(DOWNLOAD_MSG):
+        make_dirs()
         client.send(message.encode())
         _, FILE_NAME = message.split(' ')
-        FILE_NAME = 'server_' + FILE_NAME
         flag = True
         while (flag):
             continue
