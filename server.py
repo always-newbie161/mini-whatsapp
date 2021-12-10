@@ -49,35 +49,38 @@ def handle_client(name, conn, addr):
                 print("Filesize:", filesize)
 
                 send_client(name, "[SERVER GRANT] UPLOAD")
-                filename = "server/" + filename 
+                filename_loc = "server/" + filename 
                 
                 NUM_CHUNKS = int(filesize)//BUF_SIZE+1
-                with open(filename,"wb") as file:
+                with open(filename_loc,"wb") as file:
                     for _ in range(NUM_CHUNKS):
                         chunk = conn.recv(BUF_SIZE)    
                         if not chunk:
                             break
                         file.write(chunk)
 
-                print(f"File {filename} Received")
+                print(f"File {filename} Received from {name}")
                 send_client(name, f"[SERVER UPDATE] Hi {name}, your file {filename} has been received")
+                send_all(name, f"[SERVER UPDATE] {name} has uploaded file {filename} to the server")
 
             elif msg.startswith(DOWNLOAD_MSG):
                 _,filename = msg.split(' ')
-                filename = "server/"+filename
-                if os.path.exists(filename):
+                filename_loc = "server/"+filename
+                if os.path.exists(filename_loc):
                     print(filename + " found")               
-                filesize = os.path.getsize(filename)
+                filesize = os.path.getsize(filename_loc)
 
                 send_client(name, f"[SERVER GRANT] DOWNLOAD {filesize} bytes")
 
                 NUM_CHUNKS = int(filesize)//BUF_SIZE+1
-                with open(filename,"rb") as file:
+                with open(filename_loc,"rb") as file:
                     for _ in range(NUM_CHUNKS):
                         chunk = file.read(BUF_SIZE)
                         if not chunk:
                             break
                         conn.sendall(chunk)
+
+                print(f"File {filename} Downloaded to client {name}")
             else:
                 print(f"{msg}")
                 send_all(name, msg)
