@@ -49,7 +49,7 @@ def handle_client(name, conn, addr):
     while True:
         msg = conn.recv(BUF_SIZE).decode()
 
-        if len(msg) != 0:
+        try:
             if msg == DISCONNECT_MSG:
                 print(f"[USER DISCONNECTED] {addr} disconnected, Name: {name}")
                 send_all(name, f"[USER DISCONNECTED] Name: {name}")
@@ -78,20 +78,26 @@ def handle_client(name, conn, addr):
             elif msg.startswith(DOWNLOAD_MSG):
                 _,filename = msg.split(' ')
                 filename_loc = "server/"+filename
-                if os.path.exists(filename_loc):
-                    print(filename + " found")               
-                filesize = os.path.getsize(filename_loc)
+                file_exists = os.path.exists(filename_loc)
 
-                send_client(name, f"[SERVER GRANT] DOWNLOAD {filesize} bytes")
+                if file_exists:
+                    print(filename + " found")
+                    filesize = os.path.getsize(filename_loc)
 
-                NUM_CHUNKS = int(filesize) // BUF_SIZE + 1
-                with open(filename_loc,"rb") as file:
-                    for _ in range(NUM_CHUNKS):
-                        chunk = file.read(BUF_SIZE)
-                        if not chunk:
-                            break
-                        send_allbytes(conn, chunk)
-                print(f"File {filename} Downloaded to client {name}")
+                    send_client(name, f"[SERVER GRANT] DOWNLOAD {filesize} bytes")
+
+                    NUM_CHUNKS = int(filesize) // BUF_SIZE + 1
+                    with open(filename_loc,"rb") as file:
+                        for _ in range(NUM_CHUNKS):
+                            chunk = file.read(BUF_SIZE)
+                            if not chunk:
+                                break
+                            send_allbytes(conn, chunk)
+                    print(f"File {filename} Downloaded to client {name}")
+                else:
+                    # file requested by user does not exist
+                    send_client(name, f"[INVALID DOWNLOAD] file {filename} does not exist in the server {0}")              
+                    print(f"[INVALID DOWNLOAD] {filename} Requested by client {name} does not exist")
                 
             elif msg.startswith(LIST_MSG):
                 tokens = msg.split(' ')
@@ -109,8 +115,11 @@ def handle_client(name, conn, addr):
             else:
                 print(f"{msg}")
                 send_all(name, msg)
-        else:
-            print(f"reading msg even without user input!")
+        except Exception:
+            # when client shutdown conncetion improperly
+            clients_dict.pop(name)
+            conn.close
+            #print(f"reading msg even without user input!")
     conn.close()
 
 
