@@ -52,17 +52,22 @@ def receive_msg():
         message_recv = client.recv(BUF_SIZE).decode()
         print(message_recv)
         if 'UPLOAD' in message_recv:
-            print("Uploading.....")
+            STATUS = re.findall(r'\d+', message_recv)[0]
+            
+            if STATUS == '1':
+                print("Uploading.....")
+                NUM_CHUNKS = int(FILE_SIZE) // BUF_SIZE + 1
+                with open(FILE_NAME, "rb") as file:
+                    for _ in range(NUM_CHUNKS):
+                        chunk = file.read(BUF_SIZE)
+                        if not chunk:
+                            break
+                        send_allbytes(client, chunk)
 
-            NUM_CHUNKS = int(FILE_SIZE) // BUF_SIZE + 1
-            with open(FILE_NAME, "rb") as file:
-                for _ in range(NUM_CHUNKS):
-                    chunk = file.read(BUF_SIZE)
-                    if not chunk:
-                        break
-                    send_allbytes(client, chunk)
-
-            flag = False
+                flag = False
+            else:
+                print("Upload Failed")
+                flag = False
 
         elif 'DOWNLOAD' in message_recv:
             FILE_SIZE = re.findall(r'\d+', message_recv)[0]
