@@ -1,8 +1,8 @@
+import datetime
+import os
+import re
 import socket
 import threading
-import datetime, os
-import sys, time
-import re
 
 PORT = 9999
 flag = False
@@ -10,12 +10,13 @@ DISCONNECT_MSG = '!EXIT'
 FILE_MSG = 'FILE'
 UPLOAD_MSG = 'UPLOAD'
 DOWNLOAD_MSG = 'DOWNLOAD'
+LIST_MSG = 'LIST'
 FILE_NAME = ''
 FILE_SIZE = ''
 BUF_SIZE = 1024
-SERVER_IP = socket.gethostbyname(socket.gethostname())
+# SERVER_IP = socket.gethostbyname(socket.gethostname())
+SERVER_IP = 'localhost'
 ADDR = (SERVER_IP, PORT)
-
 
 client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 name = input("Enter your name: ")
@@ -25,10 +26,19 @@ client.send(name.encode())
 print(f"[JOINED SUCESSFULLY], Name: {name}")
 
 
+def send_allbytes(sock, data, flags=0):
+    nbytes = sock.send(data, flags)
+    if nbytes > 0:
+        return send_allbytes(sock, data[nbytes:], flags)
+    else:
+        return None
+
+
 def send_msg(msg):
     curr_time = datetime.datetime.now().strftime('%d-%m-%Y %H:%M:%S')
     msg_to_send = f"[{curr_time}] {name}: {msg}"
-    client.send(msg_to_send.encode())
+    send_allbytes(client, msg_to_send.encode())
+
 
 def receive_msg():
     while True:
@@ -39,25 +49,25 @@ def receive_msg():
         print(message_recv)
         if 'UPLOAD' in message_recv:
             print("Uploading.....")
-            
-            NUM_CHUNKS = int(FILE_SIZE)//BUF_SIZE+1
-            with open(FILE_NAME,"rb") as file:
+
+            NUM_CHUNKS = int(FILE_SIZE) // BUF_SIZE + 1
+            with open(FILE_NAME, "rb") as file:
                 for _ in range(NUM_CHUNKS):
                     chunk = file.read(BUF_SIZE)
                     if not chunk:
                         break
-                    client.sendall(chunk)
+                    send_allbytes(client, chunk)
 
             flag = False
 
         elif 'DOWNLOAD' in message_recv:
             FILE_SIZE = re.findall(r'\d+', message_recv)[0]
             print("Downloading.....")
-            
-            NUM_CHUNKS = int(FILE_SIZE)//BUF_SIZE+1
-            with open(FILE_NAME,"wb") as file:
+
+            NUM_CHUNKS = int(FILE_SIZE) // BUF_SIZE + 1
+            with open(FILE_NAME, "wb") as file:
                 for _ in range(NUM_CHUNKS):
-                    chunk = client.recv(BUF_SIZE) 
+                    chunk = client.recv(BUF_SIZE)
                     if not chunk:
                         break
                     file.write(chunk)
@@ -83,16 +93,17 @@ while True:
         message = f"{message} {FILE_SIZE}"
         client.send(message.encode())
         flag = True
-        while(flag):
+        while (flag):
             continue
     elif message.startswith(DOWNLOAD_MSG):
         client.send(message.encode())
         _, FILE_NAME = message.split(' ')
-        FILE_NAME = 'server_'+FILE_NAME
+        FILE_NAME = 'server_' + FILE_NAME
         flag = True
-        while(flag):
+        while (flag):
             continue
 
+    elif message.startswith(LIST_MSG):
+        client.send(message.encode())
     else:
         send_msg(message)
-    
