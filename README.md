@@ -1,6 +1,6 @@
 # mini-whatsapp
 
-1. send all vadakodadu - so sendall function rayandi
+1. send all (file transfer) vadakodadu - so sendall function rayandi
 2. error handling with try catch add cheyali
 3. code beautification cheyali
 4. encryption cheyali
