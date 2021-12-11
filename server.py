@@ -155,9 +155,20 @@ def start():
         conn, addr = server.accept()
         name = conn.recv(BUF_SIZE).decode()
         # when a new connection occur, we store and socket object's corresponding name
-        clients_dict[name] = conn
-        thread = threading.Thread(target=handle_client, args=(name, conn, addr), daemon=True)
-        thread.start()
+        # but first check if name already exists and if it does then ask client alternate name
+        if name in clients_dict:
+            # ask client ti retry with a different useranme
+            print("[ACCESS DENIED] New Client tried to login with a name already is use")
+            denied_msg = 'ACCESS DENIED, Username already in use'
+            send_allbytes(conn, denied_msg.encode())
+            conn.close()
+
+        else:
+            accepted_msg = 'ACCESS GRANTED'
+            send_allbytes(conn, accepted_msg.encode())
+            clients_dict[name] = conn
+            thread = threading.Thread(target=handle_client, args=(name, conn, addr), daemon=True)
+            thread.start()
 
 
 print("[STARTING] server is staring...")

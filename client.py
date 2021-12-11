@@ -20,11 +20,19 @@ BUF_SIZE = 1024
 SERVER_IP = 'localhost'
 ADDR = (SERVER_IP, PORT)
 
-client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-name = input("Enter your name: ")
-print(f'[CONNECTING] To {SERVER_IP}:{PORT}')
-client.connect(ADDR)
-client.send(name.encode())
+while True:
+    client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    name = input("Enter your name: ")
+    print(f'[CONNECTING] To {SERVER_IP}:{PORT}')
+    client.connect(ADDR)
+    client.send(name.encode())
+    access_recv = client.recv(BUF_SIZE).decode()
+    print(access_recv)
+    if 'GRANTED' in access_recv:
+        break
+    
+    client.close()
+
 print(f"[JOINED SUCESSFULLY], Name: {name}")
 
 
