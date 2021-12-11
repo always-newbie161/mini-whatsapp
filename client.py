@@ -13,6 +13,7 @@ FILE_MSG = 'FILE'
 UPLOAD_MSG = 'UPLOAD'
 DOWNLOAD_MSG = 'DOWNLOAD'
 LIST_MSG = 'LIST'
+PVT_MSG = 'PVT'
 FILE_NAME = ''
 FILE_SIZE = ''
 BUF_SIZE = 1024
@@ -56,6 +57,17 @@ def send_allbytes(sock, data, flags=0):
         return send_allbytes(sock, data[nbytes:], flags)
     else:
         return None
+
+
+def send_pvt_msg(msg):
+    _, rec_name, pvt_msg = msg.split(' ',2)
+    curr_time = datetime.datetime.now().strftime('%d-%m-%Y %H:%M:%S')
+    pvt_msg_to_send = f"[PRIVATE][{curr_time}] {name}: {pvt_msg}"
+    key = gen_key()
+    f = Fernet(key)
+    encr_packet = '#'.join([key.decode(), f.encrypt(pvt_msg_to_send.encode()).decode()])
+    temp = f'PVT {rec_name} {encr_packet}'
+    send_allbytes(client, temp.encode())
 
 
 def send_msg(msg):
@@ -155,6 +167,7 @@ while True:
         client.send(message.encode())
         client.close()
         break
+
     elif message.startswith(UPLOAD_MSG):
 
         _, FILE_NAME = message.split(' ')
@@ -178,5 +191,9 @@ while True:
 
     elif message.startswith(LIST_MSG):
         client.send(message.encode())
+
+    elif message.startswith(PVT_MSG):
+        send_pvt_msg(message)
+
     else:
         send_msg(message)
