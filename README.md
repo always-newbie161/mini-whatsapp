@@ -6,6 +6,7 @@ Chit-Chat(mini-whatsapp) is a client-server network application that enables gro
 
 ## Requirements
 Download *server.py* and *client.py* files
+
 Consider the devices in same network 
 
 ##  Exceution
