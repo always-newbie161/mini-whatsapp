@@ -1,8 +1,8 @@
 
 
 # Readme
-
-INTRO
+## INTRO
+Chit-Chat(mini-whatsapp) is a client-server network application that enables group-messaging, private-messaging and file-transferring with end-to-end encryption.
 
 ## Requirements
 Download *server.py* and *client.py* files
