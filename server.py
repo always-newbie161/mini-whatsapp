@@ -81,7 +81,7 @@ def handle_client(name, conn, addr):
                     print("Filename:", filename)
                     print("Filesize:", filesize, "bytes")
 
-                    send_client(name, "[SERVER GRANT] UPLOAD")
+                    send_client(name, "[SERVER GRANT] UPLOAD 1")
 
                     NUM_CHUNKS = int(filesize) // BUF_SIZE + 1
                     packet_size = conn.recv(BUF_SIZE).decode()
