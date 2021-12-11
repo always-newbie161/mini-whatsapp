@@ -79,58 +79,70 @@ def receive_msg():
             message_recv = f.decrypt(encr_msg.encode()).decode()
         print(message_recv)
         if 'UPLOAD' in message_recv:
-            print("Uploading.....")
+            STATUS = re.findall(r'\d+', message_recv)[0]
 
-            NUM_CHUNKS = int(FILE_SIZE) // BUF_SIZE + 1
+            if STATUS == '1':
+                print("Uploading.....")
 
-            # Progress bar
-            progress = tqdm.tqdm(range(FILE_SIZE), desc=f"Sending {FILE_NAME}", unit="B", unit_scale=True,
-                                 unit_divisor=1024)
+                NUM_CHUNKS = int(FILE_SIZE) // BUF_SIZE + 1
 
-            with open(FILE_NAME, "rb") as file:
-                for i in range(NUM_CHUNKS):
-                    chunk = file.read(BUF_SIZE)
-                    if not chunk:
-                        break
-                    key = gen_key()
-                    f = Fernet(key)
-                    encr_packet = '#'.join([key.decode(), f.encrypt(chunk).decode()]).encode()
-                    if i == 0:
-                        packet_size = len(encr_packet)
-                        client.send(str(packet_size).encode())
-                        time.sleep(0.5)
-                    send_allbytes(client, encr_packet)
-                    # Update the progress bar
-                    progress.update(len(chunk))
-                progress.close()
-            flag = False
+                # Progress bar
+                progress = tqdm.tqdm(range(FILE_SIZE), desc=f"Sending {FILE_NAME}", unit="B", unit_scale=True,
+                                    unit_divisor=1024)
+
+                with open(FILE_NAME, "rb") as file:
+                    for i in range(NUM_CHUNKS):
+                        chunk = file.read(BUF_SIZE)
+                        if not chunk:
+                            break
+                        key = gen_key()
+                        f = Fernet(key)
+                        encr_packet = '#'.join([key.decode(), f.encrypt(chunk).decode()]).encode()
+                        if i == 0:
+                            packet_size = len(encr_packet)
+                            client.send(str(packet_size).encode())
+                            time.sleep(0.5)
+                        send_allbytes(client, encr_packet)
+                        # Update the progress bar
+                        progress.update(len(chunk))
+                    progress.close()
+                flag = False
+            else:
+                print("Upload Failed")
+                flag = False
 
         elif 'DOWNLOAD' in message_recv:
             FILE_SIZE = re.findall(r'\d+', message_recv)[0]
-            print("Downloading.....")
 
-            NUM_CHUNKS = int(FILE_SIZE) // BUF_SIZE + 1
-            packet_size = client.recv(BUF_SIZE).decode()
+            if int(FILE_SIZE) != 0:
+                print("Downloading.....")
 
-            # Progress bar
-            progress = tqdm.tqdm(range(int(FILE_SIZE)), desc=f"Recieving {FILE_NAME}", unit="B", unit_scale=True,
-                                 unit_divisor=1024)
+                NUM_CHUNKS = int(FILE_SIZE) // BUF_SIZE + 1
+                packet_size = client.recv(BUF_SIZE).decode()
 
-            with open('client_files/' + FILE_NAME, "wb") as file:
-                for i in range(NUM_CHUNKS):
-                    chunk = client.recv(int(packet_size)).decode()
-                    if not chunk:
-                        break
-                    key, encr_msg = chunk.split('#')
-                    f = Fernet(key.encode())
-                    decr_chunk = f.decrypt(encr_msg.encode())
-                    file.write(decr_chunk)
-                    # Update the progress bar
-                    progress.update(len(decr_chunk))
-                progress.close()
+                # Progress bar
+                progress = tqdm.tqdm(range(int(FILE_SIZE)), desc=f"Recieving {FILE_NAME}", unit="B", unit_scale=True,
+                                    unit_divisor=1024)
 
-            print(f"File {FILE_NAME} Received")
-            flag = False
+                with open('client_files/' + FILE_NAME, "wb") as file:
+                    for i in range(NUM_CHUNKS):
+                        chunk = client.recv(int(packet_size)).decode()
+                        if not chunk:
+                            break
+                        key, encr_msg = chunk.split('#')
+                        f = Fernet(key.encode())
+                        decr_chunk = f.decrypt(encr_msg.encode())
+                        file.write(decr_chunk)
+                        # Update the progress bar
+                        progress.update(len(decr_chunk))
+                    progress.close()
+
+                print(f"File {FILE_NAME} Received")
+                flag = False
+            else:
+                # requested file does not exist
+                print("Download Failed")
+                flag = False
 
 
 thread = threading.Thread(target=receive_msg, daemon=True)
@@ -146,12 +158,16 @@ while True:
     elif message.startswith(UPLOAD_MSG):
 
         _, FILE_NAME = message.split(' ')
-        FILE_SIZE = os.path.getsize(FILE_NAME)
-        message = f"{message} {FILE_SIZE}"
-        client.send(message.encode())
-        flag = True
-        while (flag):
-            continue
+        try:
+            FILE_SIZE = os.path.getsize(FILE_NAME)
+            message = f"{message} {FILE_SIZE}"
+            client.send(message.encode())
+            flag = True
+            while (flag):
+                continue
+        except OSError:
+            print("The file you tried to upload does not exist, Please check")
+
     elif message.startswith(DOWNLOAD_MSG):
         make_dirs()
         client.send(message.encode())
