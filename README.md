@@ -2,7 +2,9 @@
 
 # Readme
 
-INTRO
+## INTRO
+
+Chit-Chat(mini-whatsapp) is a client-server network application that enables group messaging, private messaging and File trnasferring with end-to-end encryption
 
 ## Requirements
 Download *server.py* and *client.py* files
@@ -10,7 +12,7 @@ Consider the devices in same network
 
 ##  Exceution
 
- - Run *server.py* in terminal of device you want to assign as server **IP ADRESS**
+ - Run *server.py* in terminal of device you want to assign as server **IP ADDRESS**
  - Run *client.py* in devices from which you like to chat from 
 
 ## Using the Software at Client end
