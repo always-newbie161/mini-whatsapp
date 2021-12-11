@@ -140,9 +140,12 @@ def handle_client(name, conn, addr):
 
             else:
                 send_all(name, msg)
-    else:
-        print(f"reading msg even without user input!")
-
+                
+        else:
+            print(f"[USER DISCONNECTED] {addr} disconnected, Name: {name}")
+            send_all(name, f"[USER DISCONNECTED] Name: {name}")
+            clients_dict.pop(name)
+            break
 
     conn.close()
 
