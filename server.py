@@ -67,64 +67,80 @@ def handle_client(name, conn, addr):
                 break
             elif msg.startswith(UPLOAD_MSG):
                 _, filename, filesize = msg.split(' ')
-                print("Filename:", filename)
-                print("Filesize:", filesize, "bytes")
 
-                send_client(name, "[SERVER GRANT] UPLOAD")
+                # check if a file with same name alredy exists
                 filename_loc = "server/" + filename
+                file_exists = os.path.exists(filename_loc)
 
-                NUM_CHUNKS = int(filesize) // BUF_SIZE + 1
-                packet_size = conn.recv(BUF_SIZE).decode()
-                progress = tqdm.tqdm(range(int(filesize)), desc=f"Recieving {filename}", unit="B", unit_scale=True,
-                                     unit_divisor=1024)
-                with open(filename_loc, "wb") as file:
-                    for _ in range(NUM_CHUNKS):
-                        chunk = conn.recv(int(packet_size)).decode()
-                        if not chunk:
-                            break
-                        key, encr_msg = chunk.split('#')
-                        f = Fernet(key.encode())
-                        decr_chunk = f.decrypt(encr_msg.encode())
-                        file.write(decr_chunk)
-                        # Update the progress bar
-                        progress.update(len(decr_chunk))
-                    progress.close()
+                if file_exists:
+                    # if another file with same name already exist in the server client can't rewrite it
+                    send_client(name, "[SERVER REJECT] UPLOAD 0, another file with same name exists")
+                    print(f"[SERVER REJECT] UPLOAD from {name} rejected, {filename} already exists")
+                else:
+                    print("Filename:", filename)
+                    print("Filesize:", filesize, "bytes")
 
-                print(f"File {filename} Received from {name}")
-                send_client(name, f"[SERVER UPDATE] Hi {name}, your file {filename} has been successfully uploaded")
-                send_all(name, f"[SERVER UPDATE] {name} has uploaded file {filename} to the server")
+                    send_client(name, "[SERVER GRANT] UPLOAD")
+
+                    NUM_CHUNKS = int(filesize) // BUF_SIZE + 1
+                    packet_size = conn.recv(BUF_SIZE).decode()
+                    progress = tqdm.tqdm(range(int(filesize)), desc=f"Recieving {filename}", unit="B", unit_scale=True,
+                                        unit_divisor=1024)
+                    with open(filename_loc, "wb") as file:
+                        for _ in range(NUM_CHUNKS):
+                            chunk = conn.recv(int(packet_size)).decode()
+                            if not chunk:
+                                break
+                            key, encr_msg = chunk.split('#')
+                            f = Fernet(key.encode())
+                            decr_chunk = f.decrypt(encr_msg.encode())
+                            file.write(decr_chunk)
+                            # Update the progress bar
+                            progress.update(len(decr_chunk))
+                        progress.close()
+
+                    print(f"File {filename} Received from {name}")
+                    send_client(name, f"[SERVER UPDATE] Hi {name}, your file {filename} has been successfully uploaded")
+                    send_all(name, f"[SERVER UPDATE] {name} has uploaded file {filename} to the server")
 
             elif msg.startswith(DOWNLOAD_MSG):
                 _, filename = msg.split(' ')
                 filename_loc = "server/" + filename
                 print(f'[CLIENT REQUEST] DOWNLOAD {filename} from {addr[1]}, Name: {name}')
-                if os.path.exists(filename_loc):
+                file_exists = os.path.exists(filename_loc)
+
+                if file_exists:
                     print(filename + " found")
-                filesize = os.path.getsize(filename_loc)
+                    
+                    filesize = os.path.getsize(filename_loc)
 
-                send_client(name, f"[SERVER GRANT] DOWNLOAD {filesize} bytes")
+                    send_client(name, f"[SERVER GRANT] DOWNLOAD {filesize} bytes")
 
-                NUM_CHUNKS = int(filesize) // BUF_SIZE + 1
-                progress = tqdm.tqdm(range(int(filesize)), desc=f"Sending {filename}", unit="B", unit_scale=True,
-                                     unit_divisor=1024)
-                with open(filename_loc, "rb") as file:
-                    for i in range(NUM_CHUNKS):
-                        chunk = file.read(BUF_SIZE)
-                        if not chunk:
-                            break
-                        key = gen_key()
-                        f = Fernet(key)
-                        encr_packet = '#'.join([key.decode(), f.encrypt(chunk).decode()]).encode()
-                        if i == 0:
-                            packet_size = len(encr_packet)
-                            conn.send(str(packet_size).encode())
-                            time.sleep(0.5)
-                        send_allbytes(conn, encr_packet)
-                        # Update the progress bar
-                        progress.update(len(chunk))
-                    progress.close()
-                print(f"File {filename} Downloaded to client {name}")
-
+                    NUM_CHUNKS = int(filesize) // BUF_SIZE + 1
+                    progress = tqdm.tqdm(range(int(filesize)), desc=f"Sending {filename}", unit="B", unit_scale=True,
+                                        unit_divisor=1024)
+                    with open(filename_loc, "rb") as file:
+                        for i in range(NUM_CHUNKS):
+                            chunk = file.read(BUF_SIZE)
+                            if not chunk:
+                                break
+                            key = gen_key()
+                            f = Fernet(key)
+                            encr_packet = '#'.join([key.decode(), f.encrypt(chunk).decode()]).encode()
+                            if i == 0:
+                                packet_size = len(encr_packet)
+                                conn.send(str(packet_size).encode())
+                                time.sleep(0.5)
+                            send_allbytes(conn, encr_packet)
+                            # Update the progress bar
+                            progress.update(len(chunk))
+                        progress.close()
+                    print(f"File {filename} Downloaded to client {name}")
+                else:
+                    # file requested by user does not exist
+                    send_client(name, f"[INVALID DOWNLOAD] file {filename} does not exist in the server {0}")              
+                    print(f"[INVALID DOWNLOAD] {filename} Requested by client {name} does not exist")
+                    
             elif msg.startswith(LIST_MSG):
                 tokens = msg.split(' ')
                 if len(tokens) == 1:
