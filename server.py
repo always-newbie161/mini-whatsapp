@@ -14,6 +14,7 @@ FILE_MSG = 'FILE'
 UPLOAD_MSG = 'UPLOAD'
 DOWNLOAD_MSG = 'DOWNLOAD'
 LIST_MSG = 'LIST'
+PVT_MSG = 'PVT'
 BUF_SIZE = 1024
 clients_dict = {}  # will store name and socket object
 
@@ -154,6 +155,10 @@ def handle_client(name, conn, addr):
                 encoded_list = encoded_list if len(encoded_list) else 'No file found :('
                 send_client(name, f"[SERVER GRANT] TO LIST all the requested files:\n{encoded_list}")
 
+            elif msg.startswith(PVT_MSG):
+                _,rec_name,pvt_msg = msg.split(' ')
+                send_client(rec_name,pvt_msg)
+                
             else:
                 send_all(name, msg)
                 
