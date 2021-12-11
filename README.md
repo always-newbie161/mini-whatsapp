@@ -1,12 +1,28 @@
-# mini-whatsapp
 
-1. send all (file transfer) vadakodadu - so sendall function rayandi    - Srikar
-2. error handling with try catch add cheyali (non existent file - Upload and Download, Ctrl+C exception - recv Timeout exception handling ) - Suraj
-3. code beautification cheyali and notification for files have been uploaded - message    - Suraj
-4. Data must be in data folder so manam code daniki edit cheyali    - Suraj
-5. encryption cheyali     - Srikar
-6. listing number of docs in server cheyali     - Srikar
-7. proper documentation (Readme, slides with flow chart, overview and working demo screenshot) - Madhu Dheeraj and Sindhuja and Varun   meet ayyi cheyali
-8. private messaging  - Srikar and Manoj
 
+# Readme
+
+INTRO
+
+## Requirements
+Download *server.py* and *client.py* files
+Consider the devices in same network
+
+##  Exceution
+
+ - Run *server.py* in terminal of device you want to assign as server **IP ADRESS**
+ - Run *client.py* in devices from which you like to chat from 
+
+## Using the Software at Client end
+client.py program promts to enter your name, once entering your name, you are connected to server and ready to chat.
+
+Use the following commands for the corresponding operations 
+| Command |Operation  | Syntax|
+|--|--| -- |
+| !EXIT | Exiting the server |!EXIT|
+| UPLOAD | To Upload a file | UPLOAD <file_name>|
+| DOWNLOAD| To Download aa file| DOWNLOAD <file_name> |
+| LIST | gives all files before the entrance | LIST |
+| LIST | provides files with specified extension! | LIST *<file_extension> |
+|PVT|For sending private messages |PVT receiver_name msg |
 
